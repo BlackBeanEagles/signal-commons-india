@@ -1,0 +1,24 @@
+{
+  "name": "signal-commons-india",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "inspect-feed": "node scripts/inspect-feed.mjs",
+    "ingest": "node --env-file=.env.local scripts/ingest.mjs",
+    "query": "node scripts/query.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@arkiv-network/sdk": "^0.8.0",
+    "fast-xml-parser": "^5.2.5",
+    "viem": "^2.38.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^7.1.12"
+  }
+}
