@@ -66,3 +66,8 @@ export function shortText(text, max = 2500) {
   return String(text).slice(0, max);
 }
 
+
+export function referencedRssIds(references) {
+  return [...new Set(Array.from(String(references).matchAll(/IN-(\d+)/g), match => match[1]))];
+}
+

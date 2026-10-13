@@ -63,7 +63,7 @@ function safeSourceUrl(value?: string) {
   if (!value) return null;
   try { const url = new URL(value); return url.protocol === 'https:' && url.hostname === 'sachet.ndma.gov.in' ? url.href : null; } catch { return null; }
 }
-function alertCard(record: AlertRecord, trusted: boolean) {
+function alertCard(record: AlertRecord) {
   const { alert } = record;
   const card = make('article', 'alert-card');
   const top = make('div', 'card-top');
@@ -80,7 +80,7 @@ function alertCard(record: AlertRecord, trusted: boolean) {
   const bottom = make('div', 'card-bottom');
   const sourceUrl = safeSourceUrl(alert.sourceUrl);
   if (sourceUrl) { const link = make('a', 'source-link', 'Official bulletin ↗') as HTMLAnchorElement; link.href = sourceUrl; link.target = '_blank'; link.rel = 'noopener noreferrer'; bottom.append(link); }
-  const creator = make('a', 'creator-link', `${trusted ? 'Trusted relay' : 'Relay wallet'} ${record.creator.slice(0, 7)}…${record.creator.slice(-5)} ↗`) as HTMLAnchorElement;
+  const creator = make('a', 'creator-link', `Relay wallet ${record.creator.slice(0, 7)}…${record.creator.slice(-5)} ↗`) as HTMLAnchorElement;
   creator.href = `${EXPLORER}/address/${record.creator}`; creator.target = '_blank'; creator.rel = 'noopener noreferrer'; bottom.append(creator);
   card.append(bottom);
   return card;
@@ -100,11 +100,11 @@ function render() {
     empty.append(make('strong', '', records.length ? 'No alerts match these filters.' : 'No Signal Commons alerts on Arkiv yet.'), make('p', '', records.length ? 'Try another area or hazard.' : 'The importer needs a funded publisher wallet before it can create the first entity. The official SACHET portal remains available above.'));
     cards.append(empty);
   } else {
-    for (const record of filtered) cards.append(alertCard(record, validAddress(trustedAddress) && record.creator.toLowerCase() === trustedAddress));
+    for (const record of filtered) cards.append(alertCard(record));
   }
   document.querySelector<HTMLElement>('#record-count')!.textContent = String(records.length);
   document.querySelector<HTMLElement>('#query-block')!.textContent = blockNumber?.toString() ?? '—';
-  if (!loading) status.textContent = `${filtered.length} shown · ${records.length} Arkiv record${records.length === 1 ? '' : 's'} fetched. ${validAddress(trustedAddress) ? 'Filtering by on-chain creator.' : 'Set a publisher wallet to verify its records.'}`;
+  if (!loading) status.textContent = `${filtered.length} shown · ${records.length} Arkiv record${records.length === 1 ? '' : 's'} fetched. ${validAddress(trustedAddress) ? 'Filtering by on-chain creator.' : 'Set a publisher wallet to filter by creator.'}`;
 }
 async function loadAlerts() {
   if (loading) return;
@@ -134,8 +134,11 @@ async function loadAlerts() {
       if (!previous || Date.parse(record.alert.retrievedAt ?? '') > Date.parse(previous.alert.retrievedAt ?? '')) latestBySource.set(id, record);
     }
     records = [...latestBySource.values()];
+    loading = false;
+    status.classList.remove('error');
     render();
   } catch (error) {
+    loading = false;
     records = []; render();
     status.textContent = `Arkiv query failed: ${error instanceof Error ? error.message : String(error)}`;
     status.classList.add('error');

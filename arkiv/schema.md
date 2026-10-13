@@ -38,6 +38,8 @@ const page = await query.createdBy(publisherAddress).fetch()
 
 The app follows up to four additional cursor pages, then filters district and hazard and sorts by CAP sent time locally. The 1,000-entity ceiling is an MVP limit to remove before wider deployment; Arkiv pages are limited to 200. Local filtering preserves district preferences on the user's device, but network observers can still see RPC access.
 
+An independent CLI also adds indexed `severity` equality and numeric `expires_at_ms` range conditions when supplied. Example: `npm run query -- --severity Severe --valid-for-minutes 60 --creator 0xYOUR_PUBLISHER_ADDRESS`.
+
 ## Importer duplicate query
 
 ```ts
@@ -55,4 +57,3 @@ A matching `source_digest` means the CAP XML is already published. A changed dig
 ## Data deliberately kept off Arkiv
 
 No private keys, real personal data, precise user location, subscriptions, or browser search preferences. Only public government warning content and public relay metadata are written. Source XML is cached locally for conditional HTTP requests, not written wholesale to Arkiv.
-

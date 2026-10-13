@@ -30,3 +30,11 @@ This file records tested behaviour, not invented SDK defects. Add each real issu
 
 A funded publisher wallet is required to test `createEntity()` on Tiramisu, explorer evidence, Entity Expiration, and duplicate checks against live project entities. Record the actual outcomes here after funding; do not present them as tested yet.
 
+## 4. Safe ingestion rehearsal
+
+- Surface: local importer, Node.js 24, SACHET RSS/CAP feed, and `@arkiv-network/sdk` 0.8.1.
+- Steps: run `npm run ingest:dry-run` with no wallet balance; inspect the console output.
+- Expected: parse recent live CAP alerts, report which entities would be created, and make no Arkiv mutations.
+- Actual on 13 October 2026: the feed contained 99 items; of the 10 most recent inspected, 7 were eligible and 3 were expired or non-actual. No `createEntity()` or `deleteEntity()` call runs in dry-run mode.
+- Improvement: an Arkiv cookbook example showing source expiry, revision replacement, and cancellation handling would be useful. This is a request for an example, not evidence of an SDK bug.
+

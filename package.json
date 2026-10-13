@@ -10,7 +10,10 @@
     "inspect-feed": "node scripts/inspect-feed.mjs",
     "ingest": "node --env-file=.env.local scripts/ingest.mjs",
     "query": "node scripts/query.mjs",
-    "test": "node --test"
+    "verify": "node scripts/verify.mjs",
+    "test": "node --test",
+    "wallet:generate": "node scripts/create-wallet.mjs",
+    "ingest:dry-run": "node --env-file-if-exists=.env.local scripts/dry-run.mjs"
   },
   "dependencies": {
     "@arkiv-network/sdk": "^0.8.0",

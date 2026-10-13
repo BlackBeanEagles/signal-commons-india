@@ -6,30 +6,32 @@ A public, source-linked relay for Indian disaster alerts. The browser reads aler
 
 - The public feed parser and CAP parser work against the live SACHET feed.
 - Browser and CLI Arkiv queries work against Tiramisu.
-- A signing wallet with test GLM is required before the first alert can be published on Arkiv. Until then, the UI truthfully shows an empty Arkiv dataset. Do not claim a finished hackathon submission before this is done.
+- A dedicated signing wallet has been generated locally. It needs **free Tiramisu test GLM** before the first alert can be published on Arkiv. No real money or mainnet assets are required. Until then, the UI truthfully shows an empty Arkiv dataset. Do not claim a finished hackathon submission before this is done.
 - The project is currently a local prototype. It has not yet been deployed publicly or submitted to Devfolio.
 
 ## Requirements
 
-Node.js 24+, npm, a Tiramisu wallet funded with test GLM for publishing. Never paste a private key into a chat, commit, screenshot, or submission form.
+Node.js 24+, npm, and a Tiramisu wallet funded with free test GLM for publishing. Never paste a private key into a chat, commit, screenshot, or submission form.
 
 ## Quick start
 
 ```powershell
 npm install
 npm run inspect-feed
+npm run ingest:dry-run
 npm run query
+npm run verify
 npm run dev
 ```
 
-Open the printed local URL. `npm run query` is an independent Arkiv reader: it uses the published schema and does not depend on the website.
+Open the printed local URL. `npm run query` is an independent Arkiv reader: it uses the published schema and does not depend on the website. For a compound indexed query try `npm run query -- --severity Severe --valid-for-minutes 60 --creator 0xYOUR_PUBLISHER_ADDRESS`. `npm run verify -- 0xYOUR_PUBLISHER_ADDRESS` compares each live entity's stored CAP digest with the source's current bytes; a changed source is reported separately from an unavailable source.
 
 ## Publish real public alerts to Tiramisu
 
-1. Fund a dedicated wallet through the [Arkiv faucet](https://hub.arkiv.network/faucet). Never use a wallet holding real assets.
-2. Copy `.env.example` to `.env.local`. Put the dedicated wallet's key in `ARKIV_PRIVATE_KEY` **only in that ignored local file**. Do not include quotes. Optional: set `MAX_ALERTS=10`.
+1. Fund a dedicated wallet through the [Arkiv faucet](https://hub.arkiv.network/faucet) with **test GLM only**. The generated local publisher address is `0xA455b84a4433d42E09cC6c16095B5e5270D6906D`. Do not send real assets to it. If starting from a fresh clone, run `npm run wallet:generate` to create your own dedicated wallet and ignored `.env.local`; this refuses to overwrite an existing key.
+2. Confirm that `.env.local` contains `ARKIV_PRIVATE_KEY` and `VITE_TRUSTED_CREATORS` locally. Keep the key **only in that ignored local file**. Optional: set `MAX_ALERTS=10`. Run `npm run ingest:dry-run` first; it fetches live source data and makes no Arkiv writes.
 3. Run `npm run ingest`. This reads the all-India RSS feed, follows each CAP link, skips expired or non-actual items, and creates Arkiv entities sequentially. The script prints each transaction hash and entity key, not the key.
-4. Set `VITE_TRUSTED_CREATORS` in `.env.local` to the publisher's public address, restart `npm run dev`, and run `npm run query` to verify records. Or enter the public address in the UI's Publisher wallet field.
+4. Set `VITE_TRUSTED_CREATORS` in `.env.local` to the publisher's public address, restart `npm run dev`, and run `npm run query` to verify records. Or enter the public address in the UI's Publisher wallet field. The creator field identifies the relay wallet; it does not certify a government authority.
 
 The importer caches RSS and CAP ETags under ignored `.cache/` to avoid unnecessary downloads. It validates that CAP URLs remain on the SACHET HTTPS hostname. It is designed to be run repeatedly, but publishing should be monitored; alerts can be revised or cancelled at the source. It attempts to remove relayed alerts referenced by CAP cancellations and displays the latest revision per RSS GUID. The full source lifecycle still needs field testing, so **do not use this prototype as an emergency decision service**.
 
@@ -39,7 +41,7 @@ The importer caches RSS and CAP ETags under ignored `.cache/` to avoid unnecessa
 2. Run `npm run ingest` with a funded publisher wallet. Note the printed public wallet address and transaction hash.
 3. Run `npm run query` to reproduce the Arkiv query independently of the web app.
 4. Open the app, enter the publisher's public address, and refresh. The app runs the same indexed query with an immutable `$creator` filter.
-5. Open a card's source bulletin and publisher explorer link. Compare the CAP expiry with the Arkiv entity lifetime.
+5. Run `npm run verify -- 0xYOUR_PUBLISHER_ADDRESS`, open a card's source bulletin and publisher explorer link, and compare the CAP expiry with the Arkiv entity lifetime.
 
 Entity types, attributes, and queries are in [`arkiv/schema.md`](arkiv/schema.md). Actual Arkiv integration observations are in [`arkiv/friction.md`](arkiv/friction.md).
 
@@ -52,4 +54,3 @@ Follow official instructions at [NDMA SACHET](https://sachet.ndma.gov.in/) for s
 ## Source and acknowledgement
 
 Source: [NDMA SACHET public CAP/RSS alerts](https://sachet.ndma.gov.in/). The RSS feed identifies its content as public domain. This app is independent and displays source links and issuer names as supplied by the CAP bulletin. It does not imply NDMA endorsement. Built for the [Arkiv Global Tour Stop](https://github.com/Arkiv-Network/global-tour-stop-pre-devcon) challenge between 9 and 18 October 2026. No pre-existing project components are claimed.
-
