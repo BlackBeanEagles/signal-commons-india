@@ -20,7 +20,6 @@ const client = createPublicClient({ chain: tiramisu, transport: http(RPC_URL, { 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const urlState = new URLSearchParams(location.hash.startsWith('#alerts?') ? location.hash.slice('#alerts?'.length) : location.search);
 const savedDistrict = urlState.get('area') ?? localStorage.getItem('signal-commons-district') ?? '';
-const savedPublisher = localStorage.getItem('signal-commons-publisher') ?? DEFAULT_PUBLISHER;
 let records: AlertRecord[] = [];
 let loading = false;
 let blockNumber: bigint | undefined;
@@ -31,21 +30,19 @@ let lastSuccessfulAt: string | undefined;
 
 app.innerHTML = `
   <div class="page-backdrop" aria-hidden="true"><img src="./monsoon-flood.png" alt="" /></div>
-  <div class="topbar"><div class="brand"><span class="brand-mark">SC<span class="brand-dot">.</span></span><span class="brand-name">Signal Commons <em>India</em></span></div><span class="network-pill"><span></span> ARKIV TIRAMISU TESTNET</span></div>
+  <div class="topbar"><div class="brand"><span class="brand-mark">SC<span class="brand-dot">.</span></span><span class="brand-name">Signal Commons <em>India</em></span></div><a class="topbar-source" href="https://sachet.ndma.gov.in/" target="_blank" rel="noopener noreferrer">Official alerts ↗</a></div>
   <main>
     <section class="hero">
-      <div class="hero-copy"><p class="eyebrow">OPEN PUBLIC ALERTS · INDIA</p><h1>Know the warning.<br><span>Know the source.</span></h1><p class="hero-lead">From an official SACHET bulletin to a public, queryable record. Signal Commons relays Indian disaster alerts on Arkiv so another reader can check the source, creator and expiry without asking us for access.</p><form class="hero-search" id="hero-search"><label for="hero-area">Find a warning for your area</label><div><input id="hero-area" type="search" placeholder="District or state, e.g. Khagaria" autocomplete="off"><button type="submit">Find alerts ↗</button></div></form><div class="hero-actions"><a class="secondary-link" href="#how-it-works">See how verification works ↗</a><a class="secondary-link" href="https://sachet.ndma.gov.in/" target="_blank" rel="noopener noreferrer">Official SACHET portal ↗</a></div><p class="hero-note">Independent prototype · Not an official warning channel</p></div>
+      <div class="hero-copy"><p class="eyebrow">PUBLIC DISASTER ALERTS · INDIA</p><h1>Know the warning.<br><span>Know the source.</span></h1><p class="hero-lead">Find disaster warnings for your area, see when they expire, and open the original government bulletin. Signal Commons keeps a public copy that anyone can check.</p><form class="hero-search" id="hero-search"><label for="hero-area">Find a warning for your area</label><div><input id="hero-area" type="search" placeholder="District or state, e.g. Khagaria" autocomplete="off"><button type="submit">Find alerts ↗</button></div></form><div class="hero-actions"><a class="secondary-link" href="#alerts">Browse current alerts ↗</a><a class="secondary-link" href="https://sachet.ndma.gov.in/" target="_blank" rel="noopener noreferrer">Official SACHET portal ↗</a></div><p class="hero-note">Independent prototype · Not an official warning channel</p></div>
       <div class="hero-visual"><img src="./monsoon-flood.png" alt="Illustration of heavy monsoon rain flooding a road beside a swollen river and warning beacon" /><span class="image-caption">Illustration · not a live alert map</span><div class="visual-card"><span class="visual-symbol">◉</span><div><strong>PUBLIC SIGNAL</strong><small>official bulletin → Arkiv → independent readers</small></div></div></div>
     </section>
-    <section class="metric-strip"><div><span class="metric-label" id="record-label">LIVE RECORDS</span><strong id="record-count">—</strong></div><div><span class="metric-label" id="block-label">QUERY BLOCK</span><strong id="query-block">—</strong></div><div><span class="metric-label">NETWORK</span><strong>Tiramisu <span class="muted">7738577</span></strong></div></section>
-    <section class="workspace" id="alerts"><div class="section-heading"><div><p class="eyebrow">THE PUBLIC LEDGER</p><h2>Current alerts</h2><p>Read straight from Arkiv. Source details remain visible on every alert.</p></div><button class="refresh-button" id="refresh" type="button">↻ Refresh from Arkiv</button></div>
-      <div class="filter-card"><div class="filter-grid"><label>District or area<input id="district" type="search" placeholder="Filter locally, e.g. Khagaria" autocomplete="off"></label><label>Hazard or severity<input id="hazard" type="search" placeholder="Rain, flood, severe…" autocomplete="off"></label><label>Publisher wallet<input id="publisher" type="text" placeholder="0x… (optional creator filter)" spellcheck="false"></label><label>Expiry view<select id="expiry-view"><option value="active">All unexpired</option><option value="soon">Expiring within 60 minutes</option></select></label><label>Sort alerts<select id="sort-order"><option value="newest">Newest bulletin first</option><option value="expiry">Soonest expiry first</option></select></label></div><div class="filter-bottom"><span>Area and hazard filters run on your device. Shareable filters use the URL fragment, which is not sent in the page request.</span><button id="clear-preferences" type="button">Clear filters</button></div></div>
+    <section class="metric-strip"><div><span class="metric-label" id="record-label">CURRENT ALERTS</span><strong id="record-count">—</strong></div><div><span class="metric-label">LAST CHECKED</span><strong id="last-checked">—</strong></div><div><span class="metric-label">SOURCE</span><strong>NDMA SACHET</strong></div></section>
+    <section class="workspace" id="alerts"><div class="section-heading"><div><p class="eyebrow">AREA WARNINGS</p><h2>Current alerts</h2><p>Each alert links to its original bulletin and shows when it expires.</p></div><button class="refresh-button" id="refresh" type="button">↻ Check again</button></div>
+      <div class="filter-card"><div class="filter-grid"><label>District or area<input id="district" type="search" placeholder="e.g. Khagaria" autocomplete="off"></label><label>Hazard or severity<input id="hazard" type="search" placeholder="Rain, flood, severe…" autocomplete="off"></label><label>Expiry view<select id="expiry-view"><option value="active">All current alerts</option><option value="soon">Expiring within 60 minutes</option></select></label><label>Sort alerts<select id="sort-order"><option value="newest">Newest first</option><option value="expiry">Soonest expiry first</option></select></label></div><div class="filter-bottom"><span>Your area choice stays in this browser.</span><button id="clear-preferences" type="button">Clear filters</button></div></div>
       <div id="status" class="status" role="status">Connecting to Arkiv…</div><div id="trust-notice" class="trust-notice" role="note"></div><div id="cards" class="cards"></div>
-      <aside class="verify-guide"><div><p class="eyebrow">INDEPENDENT CHECK</p><h3>Verify without this website</h3><p>Run the open-source reader against the public Tiramisu RPC. It filters by the app namespace and the Arkiv creator field. The wallet identifies the relay, not NDMA.</p></div><div><pre id="independent-query"></pre><button id="copy-query" type="button">Copy verification commands</button><a href="https://github.com/BlackBeanEagles/signal-commons-india/blob/master/arkiv/schema.md" target="_blank" rel="noopener noreferrer">Read schema and exact SDK query ↗</a></div></aside>
+      <details class="technical-details"><summary>Independent verification and developer tools</summary><aside class="verify-guide"><div><h3>Verify without this website</h3><p>Use the open-source reader to query Arkiv directly. The publisher wallet identifies this relay; it does not prove the issuing authority.</p></div><div><pre id="independent-query"></pre><button id="copy-query" type="button">Copy verification commands</button><a href="https://github.com/BlackBeanEagles/signal-commons-india/blob/master/arkiv/schema.md" target="_blank" rel="noopener noreferrer">Read schema and query ↗</a></div></aside></details>
     </section>
     <section class="explain"><div><p class="eyebrow">WHY IT MATTERS</p><h2>Public data should<br>have a public exit.</h2></div><div class="explain-grid"><article><span>01 / SOURCE</span><h3>Trace the alert</h3><p>Each card links to its original SACHET CAP bulletin and shows the source named in that bulletin.</p></article><article><span>02 / CREATOR</span><h3>Check the relay</h3><p>Arkiv’s immutable creator field identifies the wallet that published this copy. It does not certify the issuing authority.</p></article><article><span>03 / EXPIRY</span><h3>Stay current</h3><p>Alerts leave the live query surface at their official expiry, instead of staying visible as stale warnings.</p></article><article><span>04 / REUSE</span><h3>Build another reader</h3><p>The MIT code, Arkiv schema, and exact query let anyone build a separate view without our API.</p></article></div></section>
-    <section class="pipeline" id="how-it-works"><div><p class="eyebrow">FROM BULLETIN TO OPEN RECORD</p><h2>Every step has evidence.</h2><p>The source reader and parser are working. Arkiv publication still needs free test GLM; we do not show a transaction until one exists.</p></div><ol><li><strong>01 · SACHET source</strong><span>Read a public RSS entry and its linked CAP XML.</span></li><li><strong>02 · Parse and fingerprint</strong><span>Extract affected areas, instruction and expiry; hash the exact XML bytes.</span></li><li><strong>03 · Publish to Arkiv</strong><span>Create an expiring entity with a relay wallet. <em>Pending first testnet write.</em></span></li><li><strong>04 · Independent read</strong><span>The static site and open-source CLI query Arkiv directly.</span></li></ol></section>
-    <section class="crops"><div class="crops-heading"><p class="eyebrow">BUILT AROUND CROPS</p><h2>Four tests for public infrastructure.</h2><p>Each pillar maps to a behavior you can inspect in the app or reproduce from the repository.</p></div><div class="crops-grid"><article><span>C</span><h3>Censorship resistance</h3><p>Records stay queryable through Arkiv even if this website disappears. The CLI is an independent reader.</p></article><article><span>O</span><h3>Open source</h3><p>MIT code, a documented schema and reproducible query steps let another team build its own view.</p></article><article><span>P</span><h3>Privacy</h3><p>District choices stay in this browser. The relay publishes public bulletins, not resident identities or subscriptions.</p></article><article><span>S</span><h3>Security</h3><p>The creator identifies the relay wallet; a CAP fingerprint helps detect changed source bytes. Neither proves the issuer is authentic.</p></article></div></section>
     <section class="disclaimer"><strong>For awareness, not emergency dispatch.</strong><span>Follow instructions from official authorities. This independent relay can lag or be unavailable. Always verify urgent details at the linked source.</span></section>
   </main><footer><div class="brand"><span class="brand-mark">SC<span class="brand-dot">.</span></span><span class="brand-name">Signal Commons India</span></div><span>Built on Arkiv · Source: NDMA SACHET public alerts</span><a href="https://github.com/BlackBeanEagles/signal-commons-india" target="_blank" rel="noopener noreferrer">MIT source and schema ↗</a></footer>
 `;
@@ -53,7 +50,6 @@ app.innerHTML = `
 const districtInput = document.querySelector<HTMLInputElement>('#district')!;
 const heroAreaInput = document.querySelector<HTMLInputElement>('#hero-area')!;
 const hazardInput = document.querySelector<HTMLInputElement>('#hazard')!;
-const publisherInput = document.querySelector<HTMLInputElement>('#publisher')!;
 const expiryView = document.querySelector<HTMLSelectElement>('#expiry-view')!;
 const sortOrder = document.querySelector<HTMLSelectElement>('#sort-order')!;
 const status = document.querySelector<HTMLDivElement>('#status')!;
@@ -63,7 +59,6 @@ heroAreaInput.value = savedDistrict;
 hazardInput.value = urlState.get('hazard') ?? '';
 expiryView.value = urlState.get('expiry') === 'soon' ? 'soon' : 'active';
 sortOrder.value = urlState.get('sort') === 'expiry' ? 'expiry' : 'newest';
-publisherInput.value = savedPublisher;
 
 function validAddress(value: string): value is `0x${string}` { return /^0x[0-9a-fA-F]{40}$/.test(value); }
 function formatDate(value?: string) {
@@ -133,8 +128,7 @@ function alertCard(record: AlertRecord) {
   return card;
 }
 function independentQuery() {
-  const selected = publisherInput.value.trim();
-  const creator = validAddress(selected) ? selected : DEFAULT_PUBLISHER;
+  const creator = DEFAULT_PUBLISHER;
   return `git clone https://github.com/BlackBeanEagles/signal-commons-india.git\ncd signal-commons-india\nnpm ci\nnpm run query -- --creator ${creator || '0xPUBLISHER_ADDRESS'}\nnpm run verify -- ${creator || '0xPUBLISHER_ADDRESS'}`;
 }
 function savePublicSnapshot() {
@@ -149,6 +143,7 @@ function readPublicSnapshot(): { savedAt: string; blockNumber?: bigint; records:
     const current = Date.now();
     const safeRecords = data.records.slice(0, 100).filter((record: AlertRecord) =>
       record && /^0x[0-9a-fA-F]{64}$/.test(record.key) && validAddress(record.creator) &&
+      (!validAddress(DEFAULT_PUBLISHER) || record.creator.toLowerCase() === DEFAULT_PUBLISHER.toLowerCase()) &&
       Array.isArray(record.alert?.areas) && Number.isFinite(Date.parse(record.alert.expiresAt ?? '')) &&
       Date.parse(record.alert.expiresAt ?? '') > current);
     return { savedAt: data.savedAt, blockNumber: /^\d+$/.test(data.blockNumber ?? '') ? BigInt(data.blockNumber) : undefined, records: safeRecords };
@@ -171,16 +166,14 @@ function syncFilterUrl() {
 function render() {
   const district = districtInput.value.trim().toLowerCase();
   const hazard = hazardInput.value.trim().toLowerCase();
-  const trustedAddress = publisherInput.value.trim().toLowerCase();
   const now = Date.now();
   const activeRecords = records.filter(({ alert }) => Number.isFinite(Date.parse(alert.expiresAt ?? '')) && Date.parse(alert.expiresAt ?? '') > now);
-  const filtered = activeRecords.filter(({ alert, creator }) => {
+  const filtered = activeRecords.filter(({ alert }) => {
     const areaText = (alert.areas ?? []).join(' ').toLowerCase();
     const hazardText = `${alert.event ?? ''} ${alert.severity ?? ''} ${alert.title ?? ''}`.toLowerCase();
     const expires = Date.parse(alert.expiresAt ?? '');
     const withinHour = Number.isFinite(expires) && expires > now && expires <= now + 3_600_000;
     return (!district || areaText.includes(district)) && (!hazard || hazardText.includes(hazard)) &&
-      (!validAddress(trustedAddress) || creator.toLowerCase() === trustedAddress) &&
       (expiryView.value !== 'soon' || withinHour);
   }).sort((a, b) => sortOrder.value === 'expiry'
     ? Date.parse(a.alert.expiresAt ?? '') - Date.parse(b.alert.expiresAt ?? '')
@@ -189,34 +182,29 @@ function render() {
   if (filtered.length === 0) {
     const empty = make('div', 'empty-state');
     const heading = activeRecords.length ? 'No alerts match these filters.' : showingCache ? 'No unexpired saved alerts.' : queryError ? 'Unable to retrieve Arkiv alerts.' : 'No Signal Commons alerts on Arkiv yet.';
-    const detail = activeRecords.length ? 'Try another area, hazard or expiry view.' : showingCache ? 'The last saved copy has no alerts that still pass their stated expiry. Reconnect to check Arkiv and the official SACHET portal.' : queryError ? 'The network query failed. Retry when connected, or check the official SACHET portal.' : 'The importer needs a funded publisher wallet before it can create the first entity. The official SACHET portal remains available above.';
+    const detail = activeRecords.length ? 'Try another area, hazard or expiry view.' : showingCache ? 'The last saved copy has no current alerts. Reconnect to check again, or use the official SACHET portal.' : queryError ? 'Please try again, or check the official SACHET portal.' : 'This independent service has not published its first alert yet. Check the official SACHET portal for current warnings.';
     empty.append(make('strong', '', heading), make('p', '', detail));
     cards.append(empty);
   } else {
     for (const record of filtered) cards.append(alertCard(record));
   }
   document.querySelector<HTMLElement>('#record-count')!.textContent = String(activeRecords.length);
-  document.querySelector<HTMLElement>('#query-block')!.textContent = blockNumber?.toString() ?? '—';
-  document.querySelector<HTMLElement>('#record-label')!.textContent = showingCache ? 'SAVED RECORDS' : 'LIVE RECORDS';
-  document.querySelector<HTMLElement>('#block-label')!.textContent = showingCache ? 'LAST QUERY BLOCK' : 'QUERY BLOCK';
+  document.querySelector<HTMLElement>('#last-checked')!.textContent = showingCache ? 'Saved copy' : lastSuccessfulAt ? formatDate(lastSuccessfulAt) : '—';
+  document.querySelector<HTMLElement>('#record-label')!.textContent = showingCache ? 'SAVED ALERTS' : 'CURRENT ALERTS';
   document.querySelector<HTMLElement>('#independent-query')!.textContent = independentQuery();
   const trustNotice = document.querySelector<HTMLElement>('#trust-notice')!;
-  trustNotice.textContent = validAddress(trustedAddress)
-    ? `Creator filter active: only Arkiv entities written by ${trustedAddress} are shown. This proves the relay wallet, not the issuing authority.`
-    : 'All creators are visible. Anyone can use this app tag; inspect each creator and source before relying on an alert.';
-  trustNotice.classList.toggle('open', !validAddress(trustedAddress));
-  if (!loading && !showingCache && !queryError) status.textContent = `${filtered.length} shown · ${activeRecords.length} unexpired Arkiv record${activeRecords.length === 1 ? '' : 's'} fetched · checked ${formatDate(lastSuccessfulAt)}. ${validAddress(trustedAddress) ? 'Filtering by on-chain creator.' : 'Set a publisher wallet to filter by creator.'}`;
+  trustNotice.textContent = 'This is an independent relay. Confirm urgent instructions at the linked official bulletin.';
+  if (!loading && !showingCache && !queryError) status.textContent = `${filtered.length} alert${filtered.length === 1 ? '' : 's'} shown · checked ${formatDate(lastSuccessfulAt)}`;
 }
 async function loadAlerts() {
   if (loading) return;
-  loading = true; status.textContent = 'Querying Tiramisu directly…';
+  loading = true; status.textContent = 'Checking for current alerts…';
   (document.querySelector<HTMLButtonElement>('#refresh')!).disabled = true;
   try {
-    const selectedPublisher = publisherInput.value.trim();
     let query = client.select({ key: true, creator: true, payload: true, expiresAt: true })
       .where(eq('app', str('signal-commons-india')))
       .where(eq('kind', str('alert'))).limit(200);
-    if (validAddress(selectedPublisher)) query = query.createdBy(selectedPublisher);
+    if (validAddress(DEFAULT_PUBLISHER)) query = query.createdBy(DEFAULT_PUBLISHER);
     let page = await query.fetch();
     blockNumber = page.blockNumber;
     const entities = [...page.entities];
@@ -249,7 +237,8 @@ async function loadAlerts() {
     records = snapshot?.records ?? []; blockNumber = snapshot?.blockNumber;
     cachedAt = snapshot?.savedAt; showingCache = Boolean(snapshot);
     render();
-    status.textContent = `Arkiv query failed. ${snapshot ? `Showing a saved copy from ${formatDate(snapshot.savedAt)}; it is not verified now.` : 'No saved copy is available.'} ${error instanceof Error ? error.message : String(error)}`;
+    status.textContent = `Could not check for new alerts. ${snapshot ? `Showing a saved copy from ${formatDate(snapshot.savedAt)}; confirm details at the official source.` : 'Please try again or visit the official SACHET portal.'}`;
+    console.error('Arkiv alert query failed', error);
     status.classList.add('error');
   } finally { loading = false; (document.querySelector<HTMLButtonElement>('#refresh')!).disabled = false; }
 }
@@ -263,8 +252,7 @@ document.querySelector<HTMLFormElement>('#hero-search')!.addEventListener('submi
   localStorage.setItem('signal-commons-district', districtInput.value);
   syncFilterUrl(); render(); document.querySelector('#alerts')!.scrollIntoView({ behavior: 'smooth' });
 });
-publisherInput.addEventListener('change', () => { localStorage.setItem('signal-commons-publisher', publisherInput.value.trim()); loadAlerts(); });
-document.querySelector('#clear-preferences')!.addEventListener('click', () => { districtInput.value = ''; heroAreaInput.value = ''; hazardInput.value = ''; expiryView.value = 'active'; sortOrder.value = 'newest'; publisherInput.value = DEFAULT_PUBLISHER; localStorage.removeItem('signal-commons-district'); localStorage.removeItem('signal-commons-publisher'); syncFilterUrl(); loadAlerts(); });
+document.querySelector('#clear-preferences')!.addEventListener('click', () => { districtInput.value = ''; heroAreaInput.value = ''; hazardInput.value = ''; expiryView.value = 'active'; sortOrder.value = 'newest'; localStorage.removeItem('signal-commons-district'); localStorage.removeItem('signal-commons-publisher'); syncFilterUrl(); loadAlerts(); });
 document.querySelector('#refresh')!.addEventListener('click', loadAlerts);
 document.querySelector('#copy-query')!.addEventListener('click', async () => {
   await navigator.clipboard.writeText(independentQuery());

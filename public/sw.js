@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'signal-commons-shell-v6';
+const SHELL_CACHE = 'signal-commons-shell-v7';
 const scope = self.registration.scope;
 
 async function cacheShell() {
