@@ -2,6 +2,8 @@
 
 A public, source-linked relay for Indian disaster alerts. The browser reads alert entities directly from Arkiv's Tiramisu testnet; the ingestion script reads the NDMA SACHET public RSS and linked CAP XML feed and writes short-lived entities. This is an independent project and is not an official NDMA service.
 
+The homepage monsoon landscape is a generated illustration, labelled as such in the UI. It is not a live weather map or evidence of a specific event. Warning facts come only from the linked CAP records.
+
 ## Status
 
 - The public feed parser and CAP parser work against the live SACHET feed.
