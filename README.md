@@ -7,7 +7,7 @@ A public, source-linked relay for Indian disaster alerts. The browser reads aler
 - The public feed parser and CAP parser work against the live SACHET feed.
 - Browser and CLI Arkiv queries work against Tiramisu.
 - A dedicated signing wallet has been generated locally. It needs **free Tiramisu test GLM** before the first alert can be published on Arkiv. No real money or mainnet assets are required. Until then, the UI truthfully shows an empty Arkiv dataset. Do not claim a finished hackathon submission before this is done.
-- The project is currently a local prototype. It has not yet been deployed publicly or submitted to Devfolio.
+- The public source repository is [BlackBeanEagles/signal-commons-india](https://github.com/BlackBeanEagles/signal-commons-india). The web app is deployed at [GitHub Pages](https://blackbeaneagles.github.io/signal-commons-india/). The site will show an honest empty state until the first Arkiv write. It has not yet been submitted to Devfolio.
 
 ## Requirements
 
@@ -25,6 +25,8 @@ npm run dev
 ```
 
 Open the printed local URL. `npm run query` is an independent Arkiv reader: it uses the published schema and does not depend on the website. For a compound indexed query try `npm run query -- --severity Severe --valid-for-minutes 60 --creator 0xYOUR_PUBLISHER_ADDRESS`. `npm run verify -- 0xYOUR_PUBLISHER_ADDRESS` compares each live entity's stored CAP digest with the source's current bytes; a changed source is reported separately from an unavailable source.
+
+The static public site is built with `npm run build` and published from the `gh-pages` branch. It has no app backend: visitors query Arkiv directly. The tracked `master` branch contains source; `gh-pages` contains built static assets.
 
 ## Publish real public alerts to Tiramisu
 
