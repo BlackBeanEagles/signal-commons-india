@@ -53,7 +53,7 @@ Entity types, attributes, and queries are in [`arkiv/schema.md`](arkiv/schema.md
 
 ## Trust and privacy
 
-Arkiv's `$creator` proves which wallet published a relay entity. It does not prove that the wallet is a government authority or that the source's claim is true. The original SACHET bulletin remains linked. District and hazard filters run in the browser; the saved district, publisher wallet, and public alert snapshot are in browser localStorage only. Searching without a publisher filter still reveals the Arkiv RPC used by the browser. The app does not put resident identities, subscriptions, private keys, or reports on Arkiv.
+Arkiv's `$creator` proves which wallet published a relay entity. It does not prove that the wallet is a government authority or that the source's claim is true. The original SACHET bulletin remains linked. District and hazard filters run in the browser; the saved district, publisher wallet, and public alert snapshot are in browser localStorage only. The shareable area, hazard, expiry-view, and sort filters use a URL fragment, which is not sent in the page request, but anyone you share that link with can read them. Searching without a publisher filter still reveals the Arkiv RPC used by the browser. The app does not put resident identities, subscriptions, private keys, or reports on Arkiv.
 
 Follow official instructions at [NDMA SACHET](https://sachet.ndma.gov.in/) for safety decisions. Alert relaying can lag, and the testnet or app may be unavailable.
 
