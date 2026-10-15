@@ -36,7 +36,7 @@ app.innerHTML = `
     <section class="metric-strip"><div><span class="metric-label" id="record-label">LIVE RECORDS</span><strong id="record-count">—</strong></div><div><span class="metric-label" id="block-label">QUERY BLOCK</span><strong id="query-block">—</strong></div><div><span class="metric-label">NETWORK</span><strong>Tiramisu <span class="muted">7738577</span></strong></div></section>
     <section class="workspace" id="alerts"><div class="section-heading"><div><p class="eyebrow">THE PUBLIC LEDGER</p><h2>Current alerts</h2><p>Read straight from Arkiv. Source details remain visible on every alert.</p></div><button class="refresh-button" id="refresh" type="button">↻ Refresh from Arkiv</button></div>
       <div class="filter-card"><div class="filter-grid"><label>District or area<input id="district" type="search" placeholder="Filter locally, e.g. Khagaria" autocomplete="off"></label><label>Hazard or severity<input id="hazard" type="search" placeholder="Rain, flood, severe…" autocomplete="off"></label><label>Publisher wallet<input id="publisher" type="text" placeholder="0x… (optional creator filter)" spellcheck="false"></label></div><div class="filter-bottom"><span>Area and hazard filters run on your device. Your preferences are saved only in this browser.</span><button id="clear-preferences" type="button">Clear saved filters</button></div></div>
-      <div id="status" class="status" role="status">Connecting to Arkiv…</div><div id="cards" class="cards"></div>
+      <div id="status" class="status" role="status">Connecting to Arkiv…</div><div id="trust-notice" class="trust-notice" role="note"></div><div id="cards" class="cards"></div>
       <aside class="verify-guide"><div><p class="eyebrow">INDEPENDENT CHECK</p><h3>Verify without this website</h3><p>Run the open-source reader against the public Tiramisu RPC. It filters by the app namespace and the Arkiv creator field. The wallet identifies the relay, not NDMA.</p></div><div><pre id="independent-query"></pre><button id="copy-query" type="button">Copy verification commands</button><a href="https://github.com/BlackBeanEagles/signal-commons-india/blob/master/arkiv/schema.md" target="_blank" rel="noopener noreferrer">Read schema and exact SDK query ↗</a></div></aside>
     </section>
     <section class="explain"><div><p class="eyebrow">WHY IT MATTERS</p><h2>Public data should<br>have a public exit.</h2></div><div class="explain-grid"><article><span>01 / SOURCE</span><h3>Trace the alert</h3><p>Each card links to its original SACHET CAP bulletin and shows the source named in that bulletin.</p></article><article><span>02 / CREATOR</span><h3>Check the relay</h3><p>Arkiv’s immutable creator field identifies the wallet that published this copy. It does not certify the issuing authority.</p></article><article><span>03 / EXPIRY</span><h3>Stay current</h3><p>Alerts leave the live query surface at their official expiry, instead of staying visible as stale warnings.</p></article><article><span>04 / REUSE</span><h3>Build another reader</h3><p>The MIT code, Arkiv schema, and exact query let anyone build a separate view without our API.</p></article></div></section>
@@ -73,6 +73,8 @@ function alertCard(record: AlertRecord) {
   const card = make('article', 'alert-card');
   const top = make('div', 'card-top');
   if (showingCache) top.append(make('span', 'cache-label', 'Saved copy · unverified now'));
+  const knownRelay = validAddress(DEFAULT_PUBLISHER) && record.creator.toLowerCase() === DEFAULT_PUBLISHER.toLowerCase();
+  top.append(make('span', knownRelay ? 'relay-badge known' : 'relay-badge unknown', knownRelay ? 'Configured relay' : 'Unverified relay'));
   const severity = make('span', `severity ${String(alert.severity ?? '').toLowerCase().replace(/[^a-z]/g, '')}`, alert.severity || 'Unspecified');
   const event = make('span', 'event-label', alert.event || 'Public alert');
   top.append(severity, event);
@@ -83,6 +85,7 @@ function alertCard(record: AlertRecord) {
   const meta = make('div', 'card-meta');
   meta.append(make('span', '', `Issued by ${alert.sender || 'source not specified'}`), make('span', '', `Expires ${formatDate(alert.expiresAt)}`));
   card.append(meta);
+  if (!knownRelay) card.append(make('p', 'relay-warning', 'This wallet is not the configured Signal Commons relay. Its bulletin fields are unverified; check the original source before relying on them.'));
   if (showingCache) card.append(make('p', 'cache-warning', `Saved ${formatDate(cachedAt)}. Arkiv and the source may have changed. Check the official bulletin before acting.`));
   const bottom = make('div', 'card-bottom');
   const sourceUrl = safeSourceUrl(alert.sourceUrl);
@@ -153,6 +156,11 @@ function render() {
   document.querySelector<HTMLElement>('#record-label')!.textContent = showingCache ? 'SAVED RECORDS' : 'LIVE RECORDS';
   document.querySelector<HTMLElement>('#block-label')!.textContent = showingCache ? 'LAST QUERY BLOCK' : 'QUERY BLOCK';
   document.querySelector<HTMLElement>('#independent-query')!.textContent = independentQuery();
+  const trustNotice = document.querySelector<HTMLElement>('#trust-notice')!;
+  trustNotice.textContent = validAddress(trustedAddress)
+    ? `Creator filter active: only Arkiv entities written by ${trustedAddress} are shown. This proves the relay wallet, not the issuing authority.`
+    : 'All creators are visible. Anyone can use this app tag; inspect each creator and source before relying on an alert.';
+  trustNotice.classList.toggle('open', !validAddress(trustedAddress));
   if (!loading && !showingCache) status.textContent = `${filtered.length} shown · ${records.length} Arkiv record${records.length === 1 ? '' : 's'} fetched. ${validAddress(trustedAddress) ? 'Filtering by on-chain creator.' : 'Set a publisher wallet to filter by creator.'}`;
 }
 async function loadAlerts() {

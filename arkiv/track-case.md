@@ -28,7 +28,7 @@ We intend to enter all five tracks with one project. The rules allow multiple tr
 
 ## Security
 
-**Harm:** forged relays could misstate an official warning. The record contains the public CAP source link and SHA-256 digest, and Arkiv exposes the immutable creator wallet. The UI labels the wallet as a relay, not as NDMA. Source URLs are restricted to SACHET HTTPS and rendered text uses DOM text nodes.
+**Harm:** forged relays could misstate an official warning. The record contains the public CAP source link and SHA-256 digest, and Arkiv exposes the immutable creator wallet. The reader filters by `$creator` when the configured relay is selected. If someone views all creators, each card shows whether its creator matches that configured relay; unmatched wallets carry an explicit warning. This check uses Arkiv's system field, not a publisher name from the payload. The UI labels the wallet as a relay, not as NDMA. Source URLs are restricted to SACHET HTTPS and rendered text uses DOM text nodes.
 
 **Limit:** a creator wallet proves who wrote the Arkiv entity, not that the content is genuine. We need a live transaction, explorer link, and source-versus-digest verification demo. Source cancellation and revision handling need field testing.
 
