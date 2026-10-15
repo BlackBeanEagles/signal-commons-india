@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'signal-commons-shell-v4';
+const SHELL_CACHE = 'signal-commons-shell-v5';
 const scope = self.registration.scope;
 
 async function cacheShell() {
@@ -31,7 +31,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || url.origin !== self.location.origin || !url.href.startsWith(scope)) return;
   if (event.request.mode === 'navigate') {
-    event.respondWith(fetch(event.request).catch(async () => (await caches.open(SHELL_CACHE)).match(scope)));
+    event.respondWith(fetch(event.request, { cache: 'no-store' }).catch(async () => (await caches.open(SHELL_CACHE)).match(scope)));
     return;
   }
   event.respondWith((async () => {
