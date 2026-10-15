@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'signal-commons-shell-v1';
+const SHELL_CACHE = 'signal-commons-shell-v2';
 const scope = self.registration.scope;
 
 async function cacheShell() {
@@ -11,7 +11,7 @@ async function cacheShell() {
     .filter((url) => url.origin === self.location.origin && url.href.startsWith(scope))
     .map((url) => url.href);
   await cache.put(scope, response);
-  await cache.addAll(assetUrls);
+  await cache.addAll([...assetUrls, new URL('monsoon-signal.png', scope).href]);
 }
 
 self.addEventListener('install', (event) => {
