@@ -15,6 +15,7 @@ type AlertRecord = { key: string; creator: string; alert: AlertPayload };
 const RPC_URL = 'https://rpc.tiramisu.db-chain.testnet.arkiv.network';
 const EXPLORER = 'https://tiramisu.explorer.arkiv.network';
 const DEFAULT_PUBLISHER = String(import.meta.env.VITE_TRUSTED_CREATORS ?? '').split(',')[0]?.trim() ?? '';
+const CACHE_KEY = 'signal-commons-public-alerts-v1';
 const client = createPublicClient({ chain: tiramisu, transport: http(RPC_URL, { timeout: 12_000, retryCount: 0 }) });
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const savedDistrict = localStorage.getItem('signal-commons-district') ?? '';
@@ -22,6 +23,8 @@ const savedPublisher = localStorage.getItem('signal-commons-publisher') ?? DEFAU
 let records: AlertRecord[] = [];
 let loading = false;
 let blockNumber: bigint | undefined;
+let cachedAt: string | undefined;
+let showingCache = false;
 
 app.innerHTML = `
   <div class="topbar"><div class="brand"><span class="brand-mark">SC<span class="brand-dot">.</span></span><span class="brand-name">Signal Commons <em>India</em></span></div><span class="network-pill"><span></span> ARKIV TIRAMISU TESTNET</span></div>
@@ -30,7 +33,7 @@ app.innerHTML = `
       <div class="hero-copy"><p class="eyebrow">OPEN PUBLIC ALERTS · INDIA</p><h1>Know the warning.<br><span>Know the source.</span></h1><p class="hero-lead">Public disaster alerts, indexed on Arkiv so anyone can read them without relying on this website. Every record links back to its official source and the wallet that relayed it.</p><div class="hero-actions"><a class="primary-link" href="#alerts">Explore alerts <span>↗</span></a><a class="secondary-link" href="https://sachet.ndma.gov.in/" target="_blank" rel="noopener noreferrer">Official SACHET portal ↗</a></div></div>
       <div class="hero-visual" aria-hidden="true"><div class="pulse pulse-one"></div><div class="pulse pulse-two"></div><div class="pulse pulse-three"></div><div class="map-dot dot-one"></div><div class="map-dot dot-two"></div><div class="map-dot dot-three"></div><div class="visual-card"><span class="visual-symbol">◉</span><div><strong>PUBLIC SIGNAL</strong><small>source → Arkiv → anyone</small></div></div></div>
     </section>
-    <section class="metric-strip"><div><span class="metric-label">LIVE RECORDS</span><strong id="record-count">—</strong></div><div><span class="metric-label">QUERY BLOCK</span><strong id="query-block">—</strong></div><div><span class="metric-label">NETWORK</span><strong>Tiramisu <span class="muted">7738577</span></strong></div></section>
+    <section class="metric-strip"><div><span class="metric-label" id="record-label">LIVE RECORDS</span><strong id="record-count">—</strong></div><div><span class="metric-label" id="block-label">QUERY BLOCK</span><strong id="query-block">—</strong></div><div><span class="metric-label">NETWORK</span><strong>Tiramisu <span class="muted">7738577</span></strong></div></section>
     <section class="workspace" id="alerts"><div class="section-heading"><div><p class="eyebrow">THE PUBLIC LEDGER</p><h2>Current alerts</h2><p>Read straight from Arkiv. Source details remain visible on every alert.</p></div><button class="refresh-button" id="refresh" type="button">↻ Refresh from Arkiv</button></div>
       <div class="filter-card"><div class="filter-grid"><label>District or area<input id="district" type="search" placeholder="Filter locally, e.g. Khagaria" autocomplete="off"></label><label>Hazard or severity<input id="hazard" type="search" placeholder="Rain, flood, severe…" autocomplete="off"></label><label>Publisher wallet<input id="publisher" type="text" placeholder="0x… (optional creator filter)" spellcheck="false"></label></div><div class="filter-bottom"><span>Area and hazard filters run on your device. Your preferences are saved only in this browser.</span><button id="clear-preferences" type="button">Clear saved filters</button></div></div>
       <div id="status" class="status" role="status">Connecting to Arkiv…</div><div id="cards" class="cards"></div>
@@ -68,6 +71,7 @@ function alertCard(record: AlertRecord) {
   const { alert } = record;
   const card = make('article', 'alert-card');
   const top = make('div', 'card-top');
+  if (showingCache) top.append(make('span', 'cache-label', 'Saved copy · unverified now'));
   const severity = make('span', `severity ${String(alert.severity ?? '').toLowerCase().replace(/[^a-z]/g, '')}`, alert.severity || 'Unspecified');
   const event = make('span', 'event-label', alert.event || 'Public alert');
   top.append(severity, event);
@@ -78,6 +82,7 @@ function alertCard(record: AlertRecord) {
   const meta = make('div', 'card-meta');
   meta.append(make('span', '', `Issued by ${alert.sender || 'source not specified'}`), make('span', '', `Expires ${formatDate(alert.expiresAt)}`));
   card.append(meta);
+  if (showingCache) card.append(make('p', 'cache-warning', `Saved ${formatDate(cachedAt)}. Arkiv and the source may have changed. Check the official bulletin before acting.`));
   const bottom = make('div', 'card-bottom');
   const sourceUrl = safeSourceUrl(alert.sourceUrl);
   if (sourceUrl) { const link = make('a', 'source-link', 'Official bulletin ↗') as HTMLAnchorElement; link.href = sourceUrl; link.target = '_blank'; link.rel = 'noopener noreferrer'; bottom.append(link); }
@@ -108,6 +113,23 @@ function independentQuery() {
   const creator = validAddress(selected) ? selected : DEFAULT_PUBLISHER;
   return `git clone https://github.com/BlackBeanEagles/signal-commons-india.git\ncd signal-commons-india\nnpm ci\nnpm run query -- --creator ${creator || '0xPUBLISHER_ADDRESS'}\nnpm run verify -- ${creator || '0xPUBLISHER_ADDRESS'}`;
 }
+function savePublicSnapshot() {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ savedAt: new Date().toISOString(), blockNumber: blockNumber?.toString(), records: records.slice(0, 100) }));
+  } catch { /* Storage may be blocked or full. Live reads still work. */ }
+}
+function readPublicSnapshot(): { savedAt: string; blockNumber?: bigint; records: AlertRecord[] } | null {
+  try {
+    const data = JSON.parse(localStorage.getItem(CACHE_KEY) ?? 'null');
+    if (!data || !Number.isFinite(Date.parse(data.savedAt)) || !Array.isArray(data.records)) return null;
+    const current = Date.now();
+    const safeRecords = data.records.slice(0, 100).filter((record: AlertRecord) =>
+      record && /^0x[0-9a-fA-F]{64}$/.test(record.key) && validAddress(record.creator) &&
+      Array.isArray(record.alert?.areas) && Number.isFinite(Date.parse(record.alert.expiresAt ?? '')) &&
+      Date.parse(record.alert.expiresAt ?? '') > current);
+    return { savedAt: data.savedAt, blockNumber: /^\d+$/.test(data.blockNumber ?? '') ? BigInt(data.blockNumber) : undefined, records: safeRecords };
+  } catch { return null; }
+}
 function render() {
   const district = districtInput.value.trim().toLowerCase();
   const hazard = hazardInput.value.trim().toLowerCase();
@@ -120,15 +142,17 @@ function render() {
   cards.replaceChildren();
   if (filtered.length === 0) {
     const empty = make('div', 'empty-state');
-    empty.append(make('strong', '', records.length ? 'No alerts match these filters.' : 'No Signal Commons alerts on Arkiv yet.'), make('p', '', records.length ? 'Try another area or hazard.' : 'The importer needs a funded publisher wallet before it can create the first entity. The official SACHET portal remains available above.'));
+    empty.append(make('strong', '', records.length ? 'No alerts match these filters.' : showingCache ? 'No unexpired saved alerts.' : 'No Signal Commons alerts on Arkiv yet.'), make('p', '', records.length ? 'Try another area or hazard.' : showingCache ? 'The last saved copy has no alerts that still pass their stated expiry. Reconnect to check Arkiv and the official SACHET portal.' : 'The importer needs a funded publisher wallet before it can create the first entity. The official SACHET portal remains available above.'));
     cards.append(empty);
   } else {
     for (const record of filtered) cards.append(alertCard(record));
   }
   document.querySelector<HTMLElement>('#record-count')!.textContent = String(records.length);
   document.querySelector<HTMLElement>('#query-block')!.textContent = blockNumber?.toString() ?? '—';
+  document.querySelector<HTMLElement>('#record-label')!.textContent = showingCache ? 'SAVED RECORDS' : 'LIVE RECORDS';
+  document.querySelector<HTMLElement>('#block-label')!.textContent = showingCache ? 'LAST QUERY BLOCK' : 'QUERY BLOCK';
   document.querySelector<HTMLElement>('#independent-query')!.textContent = independentQuery();
-  if (!loading) status.textContent = `${filtered.length} shown · ${records.length} Arkiv record${records.length === 1 ? '' : 's'} fetched. ${validAddress(trustedAddress) ? 'Filtering by on-chain creator.' : 'Set a publisher wallet to filter by creator.'}`;
+  if (!loading && !showingCache) status.textContent = `${filtered.length} shown · ${records.length} Arkiv record${records.length === 1 ? '' : 's'} fetched. ${validAddress(trustedAddress) ? 'Filtering by on-chain creator.' : 'Set a publisher wallet to filter by creator.'}`;
 }
 async function loadAlerts() {
   if (loading) return;
@@ -158,13 +182,18 @@ async function loadAlerts() {
       if (!previous || Date.parse(record.alert.retrievedAt ?? '') > Date.parse(previous.alert.retrievedAt ?? '')) latestBySource.set(id, record);
     }
     records = [...latestBySource.values()];
+    showingCache = false; cachedAt = undefined;
+    savePublicSnapshot();
     loading = false;
     status.classList.remove('error');
     render();
   } catch (error) {
     loading = false;
-    records = []; render();
-    status.textContent = `Arkiv query failed: ${error instanceof Error ? error.message : String(error)}`;
+    const snapshot = readPublicSnapshot();
+    records = snapshot?.records ?? []; blockNumber = snapshot?.blockNumber;
+    cachedAt = snapshot?.savedAt; showingCache = Boolean(snapshot);
+    render();
+    status.textContent = `Arkiv query failed. ${snapshot ? `Showing a saved copy from ${formatDate(snapshot.savedAt)}; it is not verified now.` : 'No saved copy is available.'} ${error instanceof Error ? error.message : String(error)}`;
     status.classList.add('error');
   } finally { loading = false; (document.querySelector<HTMLButtonElement>('#refresh')!).disabled = false; }
 }
@@ -180,5 +209,12 @@ document.querySelector('#copy-query')!.addEventListener('click', async () => {
   button.textContent = 'Copied'; setTimeout(() => { button.textContent = 'Copy verification commands'; }, 1800);
 });
 loadAlerts();
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(() => {
+      // The live app still works if the browser refuses offline storage.
+    });
+  });
+}
 
 

@@ -28,6 +28,8 @@ Open the printed local URL. `npm run query` is an independent Arkiv reader: it u
 
 The static public site is built with `npm run build` and published from the `gh-pages` branch. It has no app backend: visitors query Arkiv directly. The tracked `master` branch contains source; `gh-pages` contains built static assets.
 
+After an online visit, the service worker saves the static app shell for a later offline revisit. A successful Arkiv query saves up to 100 public alert records in that browser. If a later query fails, the app shows only saved alerts whose stated CAP expiry is still in the future, marks every card **Saved copy · unverified now**, and shows the last successful query block and sync time. It does not claim that cached alerts are currently on Arkiv or still valid at the source; cancellations and revisions require a fresh read. This fallback has no push delivery and cannot replace official emergency channels. Clearing site storage removes the saved copy.
+
 ## Publish real public alerts to Tiramisu
 
 1. Fund a dedicated wallet through the [Arkiv faucet](https://hub.arkiv.network/faucet) with **test GLM only**. The generated local publisher address is `0xA455b84a4433d42E09cC6c16095B5e5270D6906D`. Do not send real assets to it. If starting from a fresh clone, run `npm run wallet:generate` to create your own dedicated wallet and ignored `.env.local`; this refuses to overwrite an existing key.
@@ -49,7 +51,7 @@ Entity types, attributes, and queries are in [`arkiv/schema.md`](arkiv/schema.md
 
 ## Trust and privacy
 
-Arkiv's `$creator` proves which wallet published a relay entity. It does not prove that the wallet is a government authority or that the source's claim is true. The original SACHET bulletin remains linked. District and hazard filters run in the browser; the saved district and publisher wallet are in browser localStorage only. Searching without a publisher filter still reveals the Arkiv RPC used by the browser. The app does not put resident identities, subscriptions, private keys, or reports on Arkiv.
+Arkiv's `$creator` proves which wallet published a relay entity. It does not prove that the wallet is a government authority or that the source's claim is true. The original SACHET bulletin remains linked. District and hazard filters run in the browser; the saved district, publisher wallet, and public alert snapshot are in browser localStorage only. Searching without a publisher filter still reveals the Arkiv RPC used by the browser. The app does not put resident identities, subscriptions, private keys, or reports on Arkiv.
 
 Follow official instructions at [NDMA SACHET](https://sachet.ndma.gov.in/) for safety decisions. Alert relaying can lag, and the testnet or app may be unavailable.
 
