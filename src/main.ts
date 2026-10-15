@@ -30,6 +30,7 @@ let queryError = false;
 let lastSuccessfulAt: string | undefined;
 
 app.innerHTML = `
+  <div class="page-backdrop" aria-hidden="true"><img src="./monsoon-signal.png" alt="" /></div>
   <div class="topbar"><div class="brand"><span class="brand-mark">SC<span class="brand-dot">.</span></span><span class="brand-name">Signal Commons <em>India</em></span></div><span class="network-pill"><span></span> ARKIV TIRAMISU TESTNET</span></div>
   <main>
     <section class="hero">
