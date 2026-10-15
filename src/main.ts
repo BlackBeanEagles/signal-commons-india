@@ -15,7 +15,7 @@ type AlertRecord = { key: string; creator: string; alert: AlertPayload };
 const RPC_URL = 'https://rpc.tiramisu.db-chain.testnet.arkiv.network';
 const EXPLORER = 'https://tiramisu.explorer.arkiv.network';
 const DEFAULT_PUBLISHER = String(import.meta.env.VITE_TRUSTED_CREATORS ?? '').split(',')[0]?.trim() ?? '';
-const client = createPublicClient({ chain: tiramisu, transport: http(RPC_URL) });
+const client = createPublicClient({ chain: tiramisu, transport: http(RPC_URL, { timeout: 12_000, retryCount: 0 }) });
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const savedDistrict = localStorage.getItem('signal-commons-district') ?? '';
 const savedPublisher = localStorage.getItem('signal-commons-publisher') ?? DEFAULT_PUBLISHER;
@@ -34,6 +34,7 @@ app.innerHTML = `
     <section class="workspace" id="alerts"><div class="section-heading"><div><p class="eyebrow">THE PUBLIC LEDGER</p><h2>Current alerts</h2><p>Read straight from Arkiv. Source details remain visible on every alert.</p></div><button class="refresh-button" id="refresh" type="button">↻ Refresh from Arkiv</button></div>
       <div class="filter-card"><div class="filter-grid"><label>District or area<input id="district" type="search" placeholder="Filter locally, e.g. Khagaria" autocomplete="off"></label><label>Hazard or severity<input id="hazard" type="search" placeholder="Rain, flood, severe…" autocomplete="off"></label><label>Publisher wallet<input id="publisher" type="text" placeholder="0x… (optional creator filter)" spellcheck="false"></label></div><div class="filter-bottom"><span>Area and hazard filters run on your device. Your preferences are saved only in this browser.</span><button id="clear-preferences" type="button">Clear saved filters</button></div></div>
       <div id="status" class="status" role="status">Connecting to Arkiv…</div><div id="cards" class="cards"></div>
+      <aside class="verify-guide"><div><p class="eyebrow">INDEPENDENT CHECK</p><h3>Verify without this website</h3><p>Run the open-source reader against the public Tiramisu RPC. It filters by the app namespace and the Arkiv creator field. The wallet identifies the relay, not NDMA.</p></div><div><pre id="independent-query"></pre><button id="copy-query" type="button">Copy verification commands</button><a href="https://github.com/BlackBeanEagles/signal-commons-india/blob/master/arkiv/schema.md" target="_blank" rel="noopener noreferrer">Read schema and exact SDK query ↗</a></div></aside>
     </section>
     <section class="explain"><div><p class="eyebrow">WHY IT MATTERS</p><h2>Public data should<br>have a public exit.</h2></div><div class="explain-grid"><article><span>01 / SOURCE</span><h3>Trace the alert</h3><p>Each card links to its original SACHET CAP bulletin and shows the source named in that bulletin.</p></article><article><span>02 / CREATOR</span><h3>Check the relay</h3><p>Arkiv’s immutable creator field identifies the wallet that published this copy. It does not certify the issuing authority.</p></article><article><span>03 / EXPIRY</span><h3>Stay current</h3><p>Alerts leave the live query surface at their official expiry, instead of staying visible as stale warnings.</p></article><article><span>04 / REUSE</span><h3>Build another reader</h3><p>The MIT code, Arkiv schema, and exact query let anyone build a separate view without our API.</p></article></div></section>
     <section class="disclaimer"><strong>For awareness, not emergency dispatch.</strong><span>Follow instructions from official authorities. This independent relay can lag or be unavailable. Always verify urgent details at the linked source.</span></section>
@@ -83,7 +84,29 @@ function alertCard(record: AlertRecord) {
   const creator = make('a', 'creator-link', `Relay wallet ${record.creator.slice(0, 7)}…${record.creator.slice(-5)} ↗`) as HTMLAnchorElement;
   creator.href = `${EXPLORER}/address/${record.creator}`; creator.target = '_blank'; creator.rel = 'noopener noreferrer'; bottom.append(creator);
   card.append(bottom);
+  const proof = make('details', 'record-proof');
+  proof.append(make('summary', '', 'Inspect Arkiv record and source fingerprint'));
+  const proofBody = make('div', 'record-proof-body');
+  const key = make('code', '', record.key);
+  proofBody.append(make('span', '', 'Entity key'), key);
+  const entityLink = make('a', '', 'Open Arkiv data explorer ↗') as HTMLAnchorElement;
+  entityLink.href = 'https://data.arkiv.network/';
+  entityLink.target = '_blank'; entityLink.rel = 'noopener noreferrer'; proofBody.append(entityLink);
+  const rpcRequest = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'arkiv_getEntity', params: [record.key] });
+  const copyRequest = make('button', 'copy-record', 'Copy direct RPC request') as HTMLButtonElement;
+  copyRequest.type = 'button'; copyRequest.addEventListener('click', async () => { await navigator.clipboard.writeText(rpcRequest); copyRequest.textContent = 'Copied'; });
+  proofBody.append(copyRequest);
+  if (alert.sourceDigest) {
+    proofBody.append(make('span', '', 'SHA-256 of CAP XML when relayed'), make('code', '', alert.sourceDigest));
+  }
+  proofBody.append(make('small', '', 'A matching hash can establish byte identity with the fetched CAP response. The relay wallet and hash alone do not authenticate the issuing authority.'));
+  proof.append(proofBody); card.append(proof);
   return card;
+}
+function independentQuery() {
+  const selected = publisherInput.value.trim();
+  const creator = validAddress(selected) ? selected : DEFAULT_PUBLISHER;
+  return `git clone https://github.com/BlackBeanEagles/signal-commons-india.git\ncd signal-commons-india\nnpm ci\nnpm run query -- --creator ${creator || '0xPUBLISHER_ADDRESS'}\nnpm run verify -- ${creator || '0xPUBLISHER_ADDRESS'}`;
 }
 function render() {
   const district = districtInput.value.trim().toLowerCase();
@@ -104,6 +127,7 @@ function render() {
   }
   document.querySelector<HTMLElement>('#record-count')!.textContent = String(records.length);
   document.querySelector<HTMLElement>('#query-block')!.textContent = blockNumber?.toString() ?? '—';
+  document.querySelector<HTMLElement>('#independent-query')!.textContent = independentQuery();
   if (!loading) status.textContent = `${filtered.length} shown · ${records.length} Arkiv record${records.length === 1 ? '' : 's'} fetched. ${validAddress(trustedAddress) ? 'Filtering by on-chain creator.' : 'Set a publisher wallet to filter by creator.'}`;
 }
 async function loadAlerts() {
@@ -150,6 +174,11 @@ hazardInput.addEventListener('input', render);
 publisherInput.addEventListener('change', () => { localStorage.setItem('signal-commons-publisher', publisherInput.value.trim()); loadAlerts(); });
 document.querySelector('#clear-preferences')!.addEventListener('click', () => { districtInput.value = ''; hazardInput.value = ''; publisherInput.value = DEFAULT_PUBLISHER; localStorage.removeItem('signal-commons-district'); localStorage.removeItem('signal-commons-publisher'); loadAlerts(); });
 document.querySelector('#refresh')!.addEventListener('click', loadAlerts);
+document.querySelector('#copy-query')!.addEventListener('click', async () => {
+  await navigator.clipboard.writeText(independentQuery());
+  const button = document.querySelector<HTMLButtonElement>('#copy-query')!;
+  button.textContent = 'Copied'; setTimeout(() => { button.textContent = 'Copy verification commands'; }, 1800);
+});
 loadAlerts();
 
 
