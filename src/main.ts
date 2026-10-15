@@ -276,7 +276,7 @@ if (location.hash.startsWith('#alerts?')) document.querySelector('#alerts')!.scr
 setInterval(render, 60_000);
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(() => {
+    navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' }).then((registration) => registration.update()).catch(() => {
       // The live app still works if the browser refuses offline storage.
     });
   });
