@@ -19,6 +19,7 @@ const wallet = account ? createWalletClient({ chain: tiramisu, transport: http()
 const publicClient = dryRun ? undefined : createPublicClient({ chain: tiramisu, transport: http() });
 const max = Math.min(Math.max(Number(process.env.MAX_ALERTS ?? '10'), 1), 30);
 const statePath = new URL('../.cache/sachet.json', import.meta.url);
+const evidencePath = new URL('../.cache/transactions.json', import.meta.url);
 let cache = { caps: {} };
 try { cache = JSON.parse(await readFile(statePath, 'utf8')); } catch {}
 const feed = await fetchXml(FEED_URL, cache.etag);
@@ -42,6 +43,13 @@ async function removePublished(id, label) {
       console.log(`${label} ${id} ${entity.key}`);
     }
   }
+}
+async function recordCreation(entry) {
+  let entries = [];
+  try { entries = JSON.parse(await readFile(evidencePath, 'utf8')); } catch {}
+  if (!Array.isArray(entries)) entries = [];
+  entries.push(entry);
+  await writeFile(evidencePath, JSON.stringify(entries, null, 2));
 }
 
 let created = 0;
@@ -109,6 +117,20 @@ for (const item of items.slice(0, max)) {
     });
     created++;
     console.log(`CREATED ${item.guid} ${result.entityKey} ${result.txHash}`);
+    try {
+      await recordCreation({
+        publisher: account.address,
+        sourceId: item.guid,
+        sourceUrl: item.link,
+        sourceDigest: digest,
+        expiresAt: cap.expiresAt,
+        entityKey: result.entityKey,
+        txHash: result.txHash,
+        recordedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error(`EVIDENCE_SAVE_FAILED ${item.guid}: ${error instanceof Error ? error.message : String(error)}`);
+    }
     for (const prior of existing.entities) {
       if (prior.key) {
         await wallet.deleteEntity({ entityKey: prior.key });
