@@ -6,7 +6,7 @@ We intend to enter all five tracks with one project. The rules allow multiple tr
 
 **User and harm:** people in Indian districts need to find current public hazard warnings and verify the issuing source. The interface uses India time, searches CAP area descriptions, links every result to SACHET, and avoids requiring an account. The relay is an awareness tool; official instructions remain authoritative.
 
-**Evidence still needed:** field feedback from at least one Indian user and live Arkiv records that stay current during judging. The public URL is live.
+**Evidence still needed:** field feedback from at least one Indian user and scheduled writes that keep Arkiv records current during judging. The public URL and first ten live records exist.
 
 ## Censorship Resistance
 
@@ -30,7 +30,7 @@ We intend to enter all five tracks with one project. The rules allow multiple tr
 
 **Harm:** forged relays could misstate an official warning. The record contains the public CAP source link and SHA-256 digest, and Arkiv exposes the immutable creator wallet. The deployed reader filters by the configured `$creator` value. Each card identifies its relay wallet; any unexpected creator is labelled unverified. This check uses Arkiv's system field, not a publisher name from the payload. The UI labels the wallet as a relay, not as NDMA. Source URLs are restricted to SACHET HTTPS and rendered text uses DOM text nodes.
 
-**Limit:** a creator wallet proves who wrote the Arkiv entity, not that the content is genuine. We need a live transaction, explorer link, and source-versus-digest verification demo. Source cancellation and revision handling need field testing.
+**Limit:** a creator wallet proves who wrote the Arkiv entity, not that the content is genuine. Ten live records were checked against current source bytes on 17 October. Source cancellation and revision handling still need field testing, and a matching digest does not authenticate NDMA.
 
 ## Why Arkiv
 

@@ -14,7 +14,7 @@ Queryable attributes:
 - `source_digest: str(sha256)` — digest of retrieved CAP XML; used to avoid repeated writes.
 - `event: str` — hazard/event classification supplied in CAP.
 - `severity: str` — CAP severity, preserved as supplied.
-- `area: str` — first CAP area description, a coarse public geography.
+- `area: str` — first CAP area description, a coarse public geography, truncated at a UTF-8 boundary to Arkiv's 128-byte indexed-string limit. The full descriptions remain in the payload.
 - `expires_at_ms: u64` — source expiry in Unix milliseconds, for numeric range queries.
 
 Payload (`application/json`, not indexed): source URL, RSS GUID, SHA-256 digest, retrieval time, headline, description, instruction, CAP sender, all CAP area descriptions, event, severity, urgency, certainty, sent time, expiry, and a note that the wallet relays rather than issues the alert.

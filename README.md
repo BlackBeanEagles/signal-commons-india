@@ -8,8 +8,10 @@ The homepage flood scene is a generated illustration, labelled as such in the UI
 
 - The public feed parser and CAP parser work against the live SACHET feed.
 - Browser and CLI Arkiv queries work against Tiramisu.
-- A dedicated signing wallet has been generated locally. As checked on 16 October, it has **zero Tiramisu test GLM**. It needs free test GLM before the first alert can be published on Arkiv. No real money or mainnet assets are required. Until then, the UI truthfully shows an empty Arkiv dataset. Do not claim a finished hackathon submission before this is done.
-- The public source repository is [BlackBeanEagles/signal-commons-india](https://github.com/BlackBeanEagles/signal-commons-india). The web app is deployed at [GitHub Pages](https://blackbeaneagles.github.io/signal-commons-india/). The site will show an honest empty state until the first Arkiv write. It has not yet been submitted to Devfolio.
+- The dedicated publisher wallet `0xA455b84a4433d42E09cC6c16095B5e5270D6906D` received free Tiramisu test GLM on 17 October. The importer published ten current SACHET alerts, and the independent verifier found ten matching CAP digests. These alerts expire at their official deadlines, so the scheduled importer still needs deployment and monitoring through judging. No real money or mainnet assets are required.
+- The public source repository is [BlackBeanEagles/signal-commons-india](https://github.com/BlackBeanEagles/signal-commons-india). The web app is deployed at [GitHub Pages](https://blackbeaneagles.github.io/signal-commons-india/). It has not yet been submitted to Devfolio.
+
+First live entity: [transaction `0x6cdff12f…41c0`](https://tiramisu.explorer.arkiv.network/tx/0x6cdff12fb12282bfe0719b57de711ccf5909399a6d4f182b4d9dcd4f15be41c0), entity key `0x0964129da710200b015be0d2c8e8557c1c6304db816cc800fd967ab0e5a867b9`. Its visibility in current queries ends at the CAP expiry; the transaction remains evidence of the write. Run `npm run query -- --creator 0xA455b84a4433d42E09cC6c16095B5e5270D6906D` to inspect current entities and `npm run verify -- 0xA455b84a4433d42E09cC6c16095B5e5270D6906D` to compare their digests with current source bytes.
 
 ## Requirements
 

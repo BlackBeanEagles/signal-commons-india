@@ -6,7 +6,7 @@ import { createPublicClient, createWalletClient, ExpirationTime, jsonToPayload }
 import { tiramisu } from '@arkiv-network/sdk/chains';
 import { str, u64 } from '@arkiv-network/sdk/attr';
 import { eq } from '@arkiv-network/sdk/query';
-import { fetchXml, parseRss, parseCap, FEED_URL, shortText, referencedRssIds } from './feed.mjs';
+import { fetchXml, parseRss, parseCap, FEED_URL, shortText, indexedText, referencedRssIds } from './feed.mjs';
 
 const dryRun = process.env.DRY_RUN === '1';
 const key = process.env.ARKIV_PRIVATE_KEY;
@@ -109,8 +109,8 @@ for (const item of items.slice(0, max)) {
       attributes: {
         app: str('signal-commons-india'), kind: str('alert'),
         source_id: str(item.guid), source_digest: str(digest),
-        event: str(shortText(cap.event, 120)), severity: str(shortText(cap.severity, 60)),
-        area: str(shortText(cap.areas[0] ?? 'India', 180)),
+        event: str(indexedText(cap.event)), severity: str(indexedText(cap.severity)),
+        area: str(indexedText(cap.areas[0] ?? 'India')),
         expires_at_ms: u64(BigInt(expiryMs)),
       },
       expires: ExpirationTime.atDate(new Date(expiryMs)),

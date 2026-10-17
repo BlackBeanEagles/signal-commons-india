@@ -1,6 +1,6 @@
 # Arkiv friction report — Signal Commons India
 
-This file records tested behaviour, not invented SDK defects. Add each real issue encountered during the remaining build, with version, exact steps, expected and actual result, and a suggested improvement.
+This file records tested behaviour, not invented SDK defects. Each issue includes the surface, steps, expected and actual result, and the change made.
 
 ## 1. Browser RPC connectivity
 
@@ -26,9 +26,21 @@ This file records tested behaviour, not invented SDK defects. Add each real issu
 - Actual on 13 October 2026: the feed returned 99 RSS items and linked CAP XML with event, severity, area and expiry. The source provided an ETag; the importer sends it on subsequent fetches and reuses cached XML for 304 responses.
 - Improvement: no Arkiv change requested. Publishing a tested example for expiring external-source data, including source revisions and cancellation handling, would help builders.
 
-## Remaining verification
+## 5. First funded write and duplicate query
 
-A funded publisher wallet is required to test `createEntity()` on Tiramisu, explorer evidence, Entity Expiration, and duplicate checks against live project entities. Record the actual outcomes here after funding; do not present them as tested yet.
+- Surface: Tiramisu public RPC; `@arkiv-network/sdk` 0.8.1; Node.js 24; `scripts/ingest.mjs` and `scripts/query.mjs`.
+- Steps: fund publisher `0xA455b84a4433d42E09cC6c16095B5e5270D6906D` with free test GLM, run `npm run ingest`, then run `npm run query -- --creator 0xA455b84a4433d42E09cC6c16095B5e5270D6906D` and `npm run verify -- 0xA455b84a4433d42E09cC6c16095B5e5270D6906D`. Rerun `npm run ingest` without changing the source CAP bytes.
+- Expected: entities are created on Tiramisu with source expiry; the creator-filtered query finds them; the same source digest is skipped on retry.
+- Actual on 17 October 2026: nine entities were created in the first run and one more after the indexed-string fix below. The independent query returned ten current entities, and the verifier reported ten matching CAP digests, zero changed or invalid, and zero source unavailable. The rerun printed `already published` for unchanged CAP records. The first write is [transaction `0x6cdff12f…41c0`](https://tiramisu.explorer.arkiv.network/tx/0x6cdff12fb12282bfe0719b57de711ccf5909399a6d4f182b4d9dcd4f15be41c0).
+- Improvement: surface entity-creation errors with the offending indexed attribute and byte length; the current error identified the 128-byte limit but not the attribute name.
+
+## 6. Indexed string byte limit
+
+- Surface: `@arkiv-network/sdk` 0.8.1 local validation during `createEntity()`; Tiramisu `str` attributes; Node.js 24.
+- Steps: run the importer on RSS GUID `1792211300008007`, whose first CAP area description begins `Coimbatore, Kanniyakumari, Nagapattinam, Pudukkottai, Ramanat...`; set the `area` attribute with `str(shortText(cap.areas[0], 180))`.
+- Expected: a 180-character truncated string might be accepted, or the SDK would identify the `area` field and its byte size before broadcast.
+- Actual on 17 October 2026: `Invalid str value ...: 165 UTF-8 bytes exceeds the 128-byte limit on a str`. The first nine writes succeeded; this item made no transaction. The importer now cuts indexed text at a UTF-8 boundary of at most 128 bytes while retaining the full area in the JSON payload. Rerunning created the missing alert in [transaction `0x98af0d6a…01a`](https://tiramisu.explorer.arkiv.network/tx/0x98af0d6abce4e1d79ba2632b27ce96b24bfad93bee3b444eb6ea5f13f19cf01a).
+- Improvement: include the attribute name and actual byte count in validation errors; document the `str` byte limit beside mutation examples.
 
 ## 4. Safe ingestion rehearsal
 

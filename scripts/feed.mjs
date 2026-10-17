@@ -66,6 +66,18 @@ export function shortText(text, max = 2500) {
   return String(text).slice(0, max);
 }
 
+export function indexedText(text, maxBytes = 128) {
+  let result = '';
+  let size = 0;
+  for (const character of String(text)) {
+    const bytes = Buffer.byteLength(character, 'utf8');
+    if (size + bytes > maxBytes) break;
+    result += character;
+    size += bytes;
+  }
+  return result;
+}
+
 
 export function referencedRssIds(references) {
   return [...new Set(Array.from(String(references).matchAll(/IN-(\d+)/g), match => match[1]))];
