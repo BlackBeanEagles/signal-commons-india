@@ -1,0 +1,36 @@
+name: Relay current SACHET alerts
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: signal-commons-relay
+  cancel-in-progress: false
+
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ARKIV_PRIVATE_KEY: ${{ secrets.ARKIV_PRIVATE_KEY }}
+      MAX_ALERTS: '10'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Check publisher configuration
+        run: |
+          if [ -z "$ARKIV_PRIVATE_KEY" ]; then
+            echo 'ARKIV_PRIVATE_KEY repository secret is required for scheduled publishing.' >&2
+            exit 1
+          fi
+      - name: Publish current alerts
+        run: node scripts/ingest.mjs

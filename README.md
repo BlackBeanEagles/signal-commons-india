@@ -41,6 +41,10 @@ After an online visit, the service worker saves the static app shell for a later
 
 The importer caches RSS and CAP ETags under ignored `.cache/` to avoid unnecessary downloads. It also records each successful creation's public transaction hash and entity key in `.cache/transactions.json` so evidence survives alert expiry. This file contains no key or personal data. It validates that CAP URLs remain on the SACHET HTTPS hostname. It is designed to be run repeatedly, but publishing should be monitored; alerts can be revised or cancelled at the source. It attempts to remove relayed alerts referenced by CAP cancellations and displays the latest revision per RSS GUID. The full source lifecycle still needs field testing, so **do not use this prototype as an emergency decision service**.
 
+### Keep alerts current during judging
+
+The [relay workflow](.github/workflows/relay-alerts.yml) checks for current bulletins every 30 minutes and can also be run manually from GitHub Actions. It runs only after the repository has an `ARKIV_PRIVATE_KEY` Actions secret for the **same dedicated, funded Tiramisu publisher wallet** configured in the site's `VITE_TRUSTED_CREATORS` build variable. Add the secret in GitHub repository **Settings → Secrets and variables → Actions → New repository secret**; never commit or paste it into an issue or workflow file. First publish and verify manually, then use **Actions → Relay current SACHET alerts → Run workflow** to check the scheduled path. GitHub's scheduled runs can be delayed, and the official source remains authoritative. Monitor workflow failures and the site's last-checked status through 23 October.
+
 ## What to reproduce
 
 1. Run `npm run inspect-feed` to observe live RSS/CAP fields.
